@@ -1,0 +1,52 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-cream font-sans text-slate-800 antialiased;
+  }
+  ::selection {
+    @apply bg-brand text-white;
+  }
+}
+
+@layer components {
+  /* Botón principal */
+  .uiverse-btn {
+    position: relative;
+    padding: 12px 28px;
+    background: #12697c;
+    color: #FCF1DB;
+    border: none;
+    border-radius: 50px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(18, 105, 124, 0.3);
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+  .uiverse-btn:hover {
+    background: #0e5361;
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(18, 105, 124, 0.5);
+  }
+  .uiverse-btn:active {
+    transform: translateY(-1px);
+  }
+
+  .glass-card {
+    background: rgba(255, 255, 255, 0.65);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+  }
+
+  .section-eyebrow {
+    @apply rounded-full bg-brand/10 px-4 py-1.5 text-sm font-semibold uppercase tracking-widest text-brand;
+  }
+
+  .input-field {
+    @apply w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 transition-all focus:border-brand focus:outline-none;
+  }
+}
