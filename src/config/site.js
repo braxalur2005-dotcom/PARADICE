@@ -10,7 +10,7 @@ export const SITE = {
     'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3762.667825727932!2d-99.1686935251867!3d19.427020640776517!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x85d1ff35f5bd15a3%3A0x463273e34b9d0e2e!2sAv.%20Paseo%20de%20la%20Reforma%2C%20Ju%C3%A1rez%2C%20Ciudad%20de%20M%C3%A9xico%2C%20CDMX!5e0!3m2!1ses!2smx!4v1700000000000!5m2!1ses!2smx',
   mapsDirectionsUrl: 'https://maps.google.com/?q=Av.+Paseo+de+la+Reforma+222+Ciudad+de+Mexico',
   // Correo que recibirá las solicitudes (vía formsubmit.co)
-  formEmail: 'contacto@limpiezapro.com',
+  formEmail: 'info.paradiseonthebeach@gmail.com',
   social: {
     instagram: 'https://instagram.com',
     facebook: 'https://facebook.com',
