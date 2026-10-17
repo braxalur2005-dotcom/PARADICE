@@ -21,11 +21,16 @@ export default {
           from: { opacity: '0', transform: 'scale(0.95)' },
           to: { opacity: '1', transform: 'scale(1)' },
         },
+        'rise-in': {
+          from: { opacity: '0', transform: 'translateY(20px)' },
+          to: { opacity: '1', transform: 'translateY(0)' },
+        },
       },
       animation: {
         'fade-in': 'fade-in 0.25s ease-out',
         'slide-down': 'slide-down 0.2s ease-out',
         'zoom-in': 'zoom-in 0.2s ease-out',
+        'rise-in': 'rise-in 0.6s cubic-bezier(0.16, 1, 0.3, 1) both',
       },
     },
   },

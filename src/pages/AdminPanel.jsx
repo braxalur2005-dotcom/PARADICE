@@ -1,16 +1,44 @@
-import { Shield, Eye, Image as ImageIcon, Plus, Edit2, Trash2, User, Send } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Shield, Eye, Image as ImageIcon, User, Send, Phone, Save } from 'lucide-react';
 import { REQUEST_STATUSES } from '../data/initialData';
 
 export default function AdminPanel({
   catalog,
   users,
   requests,
-  onAddWork,
-  onEditWork,
-  onDeleteWork,
+  siteSettings,
+  siteSettingsError,
+  onManageCatalog,
   onChangeRequestStatus,
+  onSaveSiteSettings,
   onExit,
 }) {
+  const [phoneDisplay, setPhoneDisplay] = useState(siteSettings.phoneDisplay);
+  const [settingsMessage, setSettingsMessage] = useState('');
+  const [savingSettings, setSavingSettings] = useState(false);
+
+  useEffect(() => {
+    setPhoneDisplay(siteSettings.phoneDisplay);
+  }, [siteSettings.phoneDisplay]);
+
+  const saveSettings = async (event) => {
+    event.preventDefault();
+    const phone = phoneDisplay.trim();
+    if (!phone || phone.replace(/\D/g, '').length < 10) {
+      setSettingsMessage('Escribe un número de WhatsApp válido con código de país.');
+      return;
+    }
+
+    setSavingSettings(true);
+    setSettingsMessage('');
+    try {
+      const saved = await onSaveSiteSettings({ ...siteSettings, phoneDisplay: phone });
+      setSettingsMessage(saved ? 'Número actualizado para todos los visitantes.' : '');
+    } finally {
+      setSavingSettings(false);
+    }
+  };
+
   return (
     <div className="mx-auto max-w-7xl px-4 pb-20 pt-28 sm:px-6 lg:px-8">
       <div className="mb-8 flex flex-col items-start justify-between gap-4 rounded-3xl border border-slate-100 bg-white p-6 shadow-sm md:flex-row md:items-center">
@@ -26,43 +54,54 @@ export default function AdminPanel({
       </div>
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+        <form onSubmit={saveSettings} className="rounded-3xl border border-slate-100 bg-white p-6 shadow-sm lg:col-span-3">
+          <h2 className="mb-4 flex items-center gap-2 text-xl font-bold text-slate-800">
+            <Phone size={20} className="text-brand" /> Datos de contacto
+          </h2>
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <label className="flex-1 text-sm font-medium text-slate-700">
+              Número de WhatsApp
+              <input
+                type="tel"
+                value={phoneDisplay}
+                onChange={(event) => setPhoneDisplay(event.target.value)}
+                className="mt-1.5 w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-brand"
+                placeholder="+52 55 1234 5678"
+              />
+            </label>
+            <button
+              type="submit"
+              disabled={savingSettings}
+              className="mt-auto flex items-center justify-center gap-2 rounded-xl bg-brand px-5 py-3 text-sm font-semibold text-white disabled:cursor-wait disabled:opacity-70"
+            >
+              <Save size={16} /> {savingSettings ? 'Guardando...' : 'Guardar'}
+            </button>
+          </div>
+          <p className="mt-2 text-xs text-slate-500">Se actualizará el botón de WhatsApp para todos los visitantes.</p>
+          {(siteSettingsError || settingsMessage) && (
+            <p role={siteSettingsError ? 'alert' : 'status'} className={`mt-3 text-sm ${siteSettingsError ? 'text-rose-700' : 'text-emerald-700'}`}>
+              {siteSettingsError || settingsMessage}
+            </p>
+          )}
+        </form>
+
         {/* Catálogo */}
         <div className="rounded-3xl border border-slate-100 bg-white p-6 shadow-sm lg:col-span-2">
-          <div className="mb-6 flex items-center justify-between">
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
             <h2 className="flex items-center gap-2 text-xl font-bold text-slate-800">
               <ImageIcon size={20} className="text-brand" /> Catálogo de Trabajos ({catalog.length})
             </h2>
             <button
-              onClick={onAddWork}
+              onClick={onManageCatalog}
               className="flex items-center gap-1 rounded-xl bg-brand/10 px-4 py-2 text-sm font-semibold text-brand transition-all hover:bg-brand hover:text-white"
             >
-              <Plus size={16} /> Agregar Trabajo
+              Administrar catálogo
             </button>
           </div>
 
-          <div className="max-h-[500px] space-y-4 overflow-y-auto pr-2">
-            {catalog.length === 0 && <p className="py-8 text-center text-sm text-slate-500">No hay trabajos en el catálogo.</p>}
-            {catalog.map((item) => (
-              <div key={item.id} className="flex items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-4 transition-all hover:bg-slate-100/50">
-                <div className="flex min-w-0 items-center gap-4">
-                  <img src={item.image} alt="" className="h-16 w-16 shrink-0 rounded-xl object-cover shadow-sm" />
-                  <div className="min-w-0">
-                    <span className="text-xs font-bold uppercase tracking-wider text-brand">{item.category}</span>
-                    <h4 className="truncate font-semibold text-slate-800">{item.title}</h4>
-                    <p className="line-clamp-1 text-xs text-slate-500">{item.description}</p>
-                  </div>
-                </div>
-                <div className="flex shrink-0 items-center gap-2">
-                  <button onClick={() => onEditWork(item)} aria-label="Editar" className="rounded-xl border border-slate-200 bg-white p-2 text-slate-600 hover:text-brand">
-                    <Edit2 size={16} />
-                  </button>
-                  <button onClick={() => onDeleteWork(item)} aria-label="Eliminar" className="rounded-xl border border-slate-200 bg-white p-2 text-rose-600 hover:bg-rose-50">
-                    <Trash2 size={16} />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
+          <p className="text-sm text-slate-600">
+            Agrega y edita nombres, categorías y galerías de imágenes desde las pestañas de administración en la página del catálogo.
+          </p>
         </div>
 
         {/* Usuarios y solicitudes */}

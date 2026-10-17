@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X } from 'lucide-react';
+import { Eye, EyeOff, X } from 'lucide-react';
 
 const inputCls =
   'w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:border-brand focus:outline-none';
@@ -9,6 +9,7 @@ export default function AuthModal({ mode, onSwitch, onClose, onLogin, onRegister
   const isLogin = mode === 'login';
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -56,7 +57,25 @@ export default function AuthModal({ mode, onSwitch, onClose, onLogin, onRegister
           </div>
           <div>
             <label className={labelCls}>Contraseña</label>
-            <input type="password" name="password" required minLength={isLogin ? undefined : 6} placeholder="••••••••" className={inputCls} />
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                name="password"
+                required
+                minLength={isLogin ? undefined : 6}
+                placeholder="••••••••"
+                className={`${inputCls} pr-12`}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((visible) => !visible)}
+                aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                aria-pressed={showPassword}
+                className="absolute inset-y-0 right-0 flex items-center px-4 text-slate-500 transition-colors hover:text-brand focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
           </div>
 
           {error && <p role="alert" className="rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</p>}

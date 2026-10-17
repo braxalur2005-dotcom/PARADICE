@@ -20,13 +20,9 @@ export const SITE = {
 
 export const SERVICE_CATEGORIES = ['Salas', 'Colchones', 'Alfombras'];
 
-export const HERO_IMAGE = '/fondo-paradise.jpg';
+export const HERO_IMAGE = `${import.meta.env.BASE_URL}hero.jpg`;
 
 export const DEFAULT_AVATAR =
   'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80';
 export const ADMIN_AVATAR =
   'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80';
-
-// ⚠️ SOLO DEMO: estas credenciales están visibles en el navegador.
-// Para producción necesitas un backend real con autenticación.
-export const DEMO_ADMIN = { email: 'admin@limpieza.com', password: 'admin123' };

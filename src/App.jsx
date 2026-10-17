@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
@@ -9,12 +9,19 @@ import Lightbox from './components/modals/Lightbox';
 import Home from './pages/Home';
 import Catalog from './pages/Catalog';
 import Contact from './pages/Contact';
-import Location from './pages/Location';
 import Profile from './pages/Profile';
 import AdminPanel from './pages/AdminPanel';
 
 import { INITIAL_CATALOG, INITIAL_REQUESTS, INITIAL_USERS } from './data/initialData';
-import { ADMIN_AVATAR, DEFAULT_AVATAR, DEMO_ADMIN, SERVICE_CATEGORIES, SITE } from './config/site';
+import {
+  loadCatalog,
+  loadSiteSettings,
+  saveCatalog as persistCatalog,
+  saveSiteSettings as persistSiteSettings,
+  subscribeToContent,
+} from './data/catalogStorage';
+import { ADMIN_AVATAR, DEFAULT_AVATAR, SITE } from './config/site';
+import { isSupabaseConfigured, supabase } from './lib/supabase';
 
 const AUTH_STORAGE_KEY = 'paradise-registered-accounts';
 
@@ -68,6 +75,10 @@ export default function App() {
 
   // Datos
   const [catalog, setCatalog] = useState(INITIAL_CATALOG);
+  const [catalogReady, setCatalogReady] = useState(false);
+  const [catalogError, setCatalogError] = useState('');
+  const [siteSettings, setSiteSettings] = useState({ address: SITE.address, phoneDisplay: SITE.phoneDisplay });
+  const [siteSettingsError, setSiteSettingsError] = useState('');
   const [requests, setRequests] = useState(INITIAL_REQUESTS);
   const [usersList, setUsersList] = useState(INITIAL_USERS);
 
@@ -76,6 +87,147 @@ export default function App() {
   const [successModal, setSuccessModal] = useState(false);
 
   const isAdmin = currentUser?.role === 'admin';
+
+  useEffect(() => {
+    let active = true;
+
+    loadCatalog()
+      .then((storedCatalog) => {
+        if (active && Array.isArray(storedCatalog)) {
+          setCatalog(storedCatalog);
+          setCatalogError('');
+        }
+      })
+      .catch((error) => {
+        console.error('No se pudo cargar el catálogo guardado:', error);
+        if (active) setCatalogError(`No se pudo cargar el catálogo compartido: ${error.message}`);
+      })
+      .finally(() => {
+        if (active) setCatalogReady(true);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    loadSiteSettings()
+      .then((storedSettings) => {
+        if (
+          active &&
+          storedSettings &&
+          typeof storedSettings.address === 'string' &&
+          typeof storedSettings.phoneDisplay === 'string'
+        ) {
+          setSiteSettings(storedSettings);
+          setSiteSettingsError('');
+        }
+      })
+      .catch((error) => {
+        console.error('No se pudieron cargar los datos de contacto:', error);
+        if (active) setSiteSettingsError(`No se pudieron cargar los datos de contacto: ${error.message}`);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured || !supabase) return undefined;
+
+    let active = true;
+    const applySession = async (session) => {
+      if (!session) return;
+
+      const { data: admin, error } = await supabase.rpc('is_admin');
+      if (error) {
+        console.error('No se pudo verificar el acceso de administrador:', error);
+        if (active) setCatalogError(`No se pudo verificar el acceso de administrador: ${error.message}`);
+        return;
+      }
+
+      if (admin && active) {
+        const email = session.user.email ?? '';
+        setCurrentUser({
+          name: session.user.user_metadata?.full_name ?? email.split('@')[0],
+          email,
+          role: 'admin',
+          photo: ADMIN_AVATAR,
+          authProvider: 'supabase',
+        });
+      } else if (!admin) {
+        const { error: signOutError } = await supabase.auth.signOut();
+        if (signOutError) console.error('No se pudo cerrar la sesión sin permisos de administrador:', signOutError);
+      }
+    };
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT') {
+        setCurrentUser((user) => (user?.authProvider === 'supabase' ? null : user));
+        setIsAdminView(false);
+      } else if (session) {
+        window.setTimeout(() => {
+          applySession(session).catch((error) => {
+            console.error('No se pudo comprobar la sesión de administrador:', error);
+            if (active) setCatalogError(`No se pudo comprobar la sesión de administrador: ${error.message}`);
+          });
+        }, 0);
+      }
+    });
+
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    let unsubscribe;
+
+    const refreshContent = async (key) => {
+      try {
+        if (key === 'catalog') {
+          const updatedCatalog = await loadCatalog();
+          if (active && Array.isArray(updatedCatalog)) {
+            setCatalog(updatedCatalog);
+            setCatalogError('');
+          }
+        } else if (key === 'site_settings') {
+          const updatedSettings = await loadSiteSettings();
+          if (active && updatedSettings && typeof updatedSettings.phoneDisplay === 'string') {
+            setSiteSettings((current) => ({ ...current, ...updatedSettings }));
+            setSiteSettingsError('');
+          }
+        }
+      } catch (error) {
+        console.error('No se pudo sincronizar el contenido compartido:', error);
+        if (active) setCatalogError(`No se pudo sincronizar el contenido compartido: ${error.message}`);
+      }
+    };
+
+    try {
+      unsubscribe = subscribeToContent(
+        (key) => refreshContent(key),
+        (error) => {
+          console.error('Se perdió la conexión en tiempo real:', error);
+          if (active) setCatalogError(`No se pudo mantener la sincronización en tiempo real: ${error.message}`);
+        }
+      );
+    } catch (error) {
+      console.error('No se pudo iniciar la sincronización en tiempo real:', error);
+      setCatalogError(`No se pudo iniciar la sincronización en tiempo real: ${error.message}`);
+    }
+
+    return () => {
+      active = false;
+      unsubscribe?.();
+    };
+  }, []);
 
   /* ---------- Navegación ---------- */
   const navigate = (section, options = {}) => {
@@ -90,11 +242,39 @@ export default function App() {
     window.scrollTo({ top: 0 });
   };
 
-  /* ---------- Autenticación local (demo, sin backend) ---------- */
+  /* ---------- Autenticación ---------- */
   const handleLogin = async (email, password) => {
     const normalizedEmail = email.trim().toLowerCase();
-    if (normalizedEmail === DEMO_ADMIN.email.toLowerCase() && password === DEMO_ADMIN.password) {
-      setCurrentUser({ name: 'Administrador', email: normalizedEmail, role: 'admin', photo: ADMIN_AVATAR });
+    if (isSupabaseConfigured && supabase) {
+      const { data, error } = await supabase.auth.signInWithPassword({ email: normalizedEmail, password });
+      if (error) {
+        console.error('No se pudo iniciar sesión en Supabase:', error);
+        return `Supabase no aceptó el inicio de sesión: ${error.message}`;
+      }
+
+      if (!data.user) return 'Supabase no devolvió un usuario para esta sesión. Inténtalo de nuevo.';
+
+      const { data: admin, error: roleError } = await supabase.rpc('is_admin');
+      if (roleError) {
+        console.error('No se pudo verificar el acceso de administrador:', roleError);
+        const { error: signOutError } = await supabase.auth.signOut();
+        if (signOutError) console.error('No se pudo cerrar la sesión sin verificar permisos:', signOutError);
+        return `No se pudo verificar el permiso de administrador: ${roleError.message}`;
+      }
+
+      if (!admin) {
+        const { error: signOutError } = await supabase.auth.signOut();
+        if (signOutError) console.error('No se pudo cerrar la sesión sin permisos de administrador:', signOutError);
+        return 'El inicio de sesión fue correcto, pero este usuario no está registrado como administrador. Ejecuta el bloque final de supabase/setup.sql con su correo.';
+      }
+
+      setCurrentUser({
+        name: data.user.user_metadata?.full_name ?? normalizedEmail.split('@')[0],
+        email: normalizedEmail,
+        role: 'admin',
+        photo: ADMIN_AVATAR,
+        authProvider: 'supabase',
+      });
       setIsAdminView(true);
       setAuthModal(null);
       return true;
@@ -130,7 +310,6 @@ export default function App() {
   const handleRegister = async (name, email, password) => {
     const normalizedEmail = email.trim().toLowerCase();
     if (!name.trim()) return 'Escribe tu nombre para crear la cuenta.';
-    if (normalizedEmail === DEMO_ADMIN.email.toLowerCase()) return 'Ese correo está reservado para la cuenta de administrador.';
     if (password.length < 6) return 'La contraseña debe tener al menos 6 caracteres.';
 
     let accounts;
@@ -173,7 +352,21 @@ export default function App() {
     return true;
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    if (currentUser?.authProvider === 'supabase' && supabase) {
+      try {
+        const { error } = await supabase.auth.signOut();
+        if (error) {
+          console.error('No se pudo cerrar la sesión de administrador:', error);
+          setCatalogError(`No se pudo cerrar la sesión: ${error.message}`);
+          return;
+        }
+      } catch (error) {
+        console.error('Falló el cierre de sesión de administrador:', error);
+        setCatalogError(`No se pudo cerrar la sesión: ${error.message}`);
+        return;
+      }
+    }
     setCurrentUser(null);
     setIsAdminView(false);
     if (activeSection === 'profile') setActiveSection('home');
@@ -211,29 +404,48 @@ export default function App() {
     setRequests((prev) => prev.map((r) => (r.id === id ? { ...r, status } : r)));
 
   /* ---------- Catálogo (admin) ---------- */
-  const addWork = () => {
-    const title = prompt('Título del trabajo:')?.trim();
-    if (!title) return;
-    const categoryInput = prompt(`Categoría (${SERVICE_CATEGORIES.join(', ')}):`, SERVICE_CATEGORIES[0])?.trim();
-    const category = SERVICE_CATEGORIES.find((c) => c.toLowerCase() === categoryInput?.toLowerCase()) ?? SERVICE_CATEGORIES[0];
-    const description = prompt('Descripción corta:')?.trim() ?? '';
-    const image = prompt('URL de la imagen principal:')?.trim();
-    if (!image) return;
-    setCatalog((prev) => [...prev, { id: Date.now(), title, category, image, gallery: [image], description }]);
+  const saveCatalogItem = async (item) => {
+    const updatedCatalog = catalog.some((work) => work.id === item.id)
+      ? catalog.map((work) => (work.id === item.id ? item : work))
+      : [...catalog, item];
+
+    try {
+      const savedCatalog = await persistCatalog(updatedCatalog);
+      setCatalog(savedCatalog);
+      setCatalogError('');
+      return true;
+    } catch (error) {
+      console.error('No se pudo guardar el catálogo:', error);
+      setCatalogError(`No se pudo guardar el catálogo compartido: ${error.message}`);
+      return false;
+    }
   };
 
-  const editWork = (item) => {
-    const title = prompt('Editar título:', item.title)?.trim();
-    if (!title) return;
-    const description = prompt('Editar descripción:', item.description)?.trim();
-    setCatalog((prev) =>
-      prev.map((c) => (c.id === item.id ? { ...c, title, description: description || c.description } : c))
-    );
+  const deleteCatalogItem = async (item) => {
+    const updatedCatalog = catalog.filter((work) => work.id !== item.id);
+
+    try {
+      const savedCatalog = await persistCatalog(updatedCatalog);
+      setCatalog(savedCatalog);
+      setCatalogError('');
+      return true;
+    } catch (error) {
+      console.error('No se pudo eliminar el trabajo del catálogo:', error);
+      setCatalogError(`No se pudo guardar el cambio compartido: ${error.message}`);
+      return false;
+    }
   };
 
-  const deleteWork = (item) => {
-    if (confirm(`¿Eliminar "${item.title}" del catálogo?`)) {
-      setCatalog((prev) => prev.filter((c) => c.id !== item.id));
+  const saveSiteSettings = async (settings) => {
+    try {
+      await persistSiteSettings(settings);
+      setSiteSettings(settings);
+      setSiteSettingsError('');
+      return true;
+    } catch (error) {
+      console.error('No se pudieron guardar los datos de contacto:', error);
+      setSiteSettingsError(`No se pudieron guardar los datos de contacto: ${error.message}`);
+      return false;
     }
   };
 
@@ -261,29 +473,40 @@ export default function App() {
             catalog={catalog}
             users={usersList}
             requests={requests}
-            onAddWork={addWork}
-            onEditWork={editWork}
-            onDeleteWork={deleteWork}
+            siteSettings={siteSettings}
+            siteSettingsError={siteSettingsError}
+            onManageCatalog={() => navigate('catalog')}
             onChangeRequestStatus={changeRequestStatus}
+            onSaveSiteSettings={saveSiteSettings}
             onExit={() => toggleAdmin(false)}
           />
         ) : (
           <>
             {activeSection === 'home' && <Home onNavigate={navigate} />}
             {activeSection === 'catalog' && (
-              <Catalog catalog={catalog} onOpen={(itemId) => setLightbox({ itemId, index: 0 })} />
+              <Catalog
+                catalog={catalog}
+                isAdmin={isAdmin}
+                catalogReady={catalogReady}
+                catalogError={catalogError}
+                onSave={saveCatalogItem}
+                onDelete={deleteCatalogItem}
+                onOpen={(itemId) => setLightbox({ itemId, index: 0 })}
+              />
             )}
             {activeSection === 'contact' && (
               <Contact initialService={preselectedService} currentUser={currentUser} onSubmit={handleRequestSubmit} />
             )}
-            {activeSection === 'location' && <Location />}
             {activeSection === 'profile' && currentUser && (
               <Profile currentUser={currentUser} requests={myRequests} onUpdateUser={updateUser} onNavigate={navigate} />
             )}
           </>
         )}
 
-        <Footer onNavigate={navigate} />
+        <Footer
+          onNavigate={navigate}
+          whatsappUrl={`https://wa.me/${siteSettings.phoneDisplay.replace(/\D/g, '')}`}
+        />
       </main>
 
       {lightboxItem && (

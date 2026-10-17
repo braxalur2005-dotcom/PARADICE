@@ -7,7 +7,6 @@ const LINKS = [
   { id: 'home', label: 'Inicio' },
   { id: 'catalog', label: 'Catálogo' },
   { id: 'contact', label: 'Contacto' },
-  { id: 'location', label: 'Ubicación' },
 ];
 
 export default function Navbar({

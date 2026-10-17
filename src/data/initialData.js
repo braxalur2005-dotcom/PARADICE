@@ -33,8 +33,12 @@ export const INITIAL_CATALOG = [
     id: 4,
     title: 'Lavado de Sala 3 Piezas',
     category: 'Salas',
-    image: u('photo-1540518614846-7ede433c4ef0'),
-    gallery: [u('photo-1540518614846-7ede433c4ef0')],
+    image: 'https://mueblesdelangel.com.mx/wp-content/uploads/2020/09/AMERICA-03.jpg',
+    gallery: [
+      'https://mueblesdelangel.com.mx/wp-content/uploads/2020/09/AMERICA-03.jpg',
+      'https://bossa.com.mx/wp-content/uploads/002.jpg',
+      'https://http2.mlstatic.com/D_NQ_NP_981114-MLM110949265028_052026-O.webp',
+    ],
     description: 'Tratamiento especial para eliminar olores de mascotas y manchas de grasa.',
   },
 ];

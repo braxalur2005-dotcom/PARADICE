@@ -1,16 +1,14 @@
 import { Phone, Mail, Instagram, Facebook, MessageCircle } from 'lucide-react';
 import { SITE } from '../config/site';
-import Logo from './Logo';
 
 const socialBtn =
   'flex h-10 w-10 items-center justify-center rounded-full bg-slate-800 text-white shadow-md transition-all';
 
-export default function Footer({ onNavigate }) {
+export default function Footer({ onNavigate, whatsappUrl }) {
   const quick = [
     ['home', 'Inicio'],
     ['catalog', 'Catálogo de Trabajos'],
     ['contact', 'Contacto y Cotización'],
-    ['location', 'Ubicación'],
   ];
 
   return (
@@ -19,7 +17,11 @@ export default function Footer({ onNavigate }) {
         <div className="grid grid-cols-1 gap-10 border-b border-slate-800 pb-12 md:grid-cols-4">
           <div>
             <div className="mb-4 flex items-center gap-3">
-              <Logo size="h-16 w-12" textSize="text-lg" />
+              <img
+                src={`${import.meta.env.BASE_URL}logo-footer.jpg`}
+                alt=""
+                className="h-12 w-12 rounded-lg object-contain"
+              />
               <span className="text-xl font-bold tracking-tight">{SITE.name}</span>
             </div>
             <p className="text-sm leading-relaxed text-slate-400">
@@ -64,7 +66,7 @@ export default function Footer({ onNavigate }) {
               <a href={SITE.social.tiktok} target="_blank" rel="noopener noreferrer" aria-label="TikTok" className={`${snippet('hover:bg-brand')}`}>
                 <MessageCircle size={18} />
               </a>
-              <a href={SITE.whatsappUrl} target="_blank" rel="noopener noreferrer" aria-label="WhatsApp" className={`${snippet('hover:bg-emerald-600')}`}>
+              <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" aria-label="WhatsApp" className={`${snippet('hover:bg-emerald-600')}`}>
                 <Phone size={18} />
               </a>
               <button onClick={() => onNavigate('contact')} title="Enviar solicitud" aria-label="Enviar solicitud" className={`${snippet('hover:bg-brand')}`}>
@@ -74,7 +76,7 @@ export default function Footer({ onNavigate }) {
           </div>
         </div>
 
-        <div className="flex flex-col items-center justify-between pt-8 text-xs text-slate-500 sm:flex-row">
+        <div className="flex flex-col items-center justify-between pt-8 text-center text-xs text-slate-500 sm:flex-row sm:text-left">
           <p>&copy; {new Date().getFullYear()} Limpieza Profesional de Salas, Colchones y Alfombras. Todos los derechos reservados.</p>
           <p className="mt-2 sm:mt-0">Diseñado con excelencia para pequeñas empresas.</p>
         </div>
